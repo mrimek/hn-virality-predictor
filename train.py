@@ -6,25 +6,31 @@ from pathlib import Path
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_auc_score, classification_report
 
-from features import extract_features, FEATURE_COLS, VIRAL_THRESHOLD_PERCENTILE, CUTOFF_5Y, CUTOFF_1Y
+from features import extract_features, FEATURE_COLS, VIRAL_THRESHOLD_PERCENTILE, CUTOFF_5Y, CUTOFF_3Y, CUTOFF_1Y
 
 DATA       = "data/hn_stories.parquet"
 MODELS_DIR = Path("models")
 
 SUBSETS = {
-    "full":      lambda df: df,
-    "show_hn":   lambda df: df[df["is_show_hn"] == 1],
-    "recent_5y": lambda df: df[df["dt"] >= CUTOFF_5Y],
-    "recent_1y": lambda df: df[df["dt"] >= CUTOFF_1Y],
+    "full":        lambda df: df,
+    "show_hn":     lambda df: df[df["is_show_hn"] == 1],
+    "show_hn_3y":  lambda df: df[(df["is_show_hn"] == 1) & (df["dt"] >= CUTOFF_3Y)],
+    "recent_5y":   lambda df: df[df["dt"] >= CUTOFF_5Y],
+    "recent_1y":   lambda df: df[df["dt"] >= CUTOFF_1Y],
 }
 
+# Tuned for higher AUC: lower LR + more trees (early stopping handles cutoff),
+# deeper leaves, mild regularization to prevent overfitting on new features.
 LGBM_PARAMS = dict(
-    n_estimators=500,
-    learning_rate=0.05,
-    num_leaves=63,
-    min_child_samples=50,
+    n_estimators=1000,
+    learning_rate=0.03,
+    num_leaves=127,
+    min_child_samples=30,
     subsample=0.8,
-    colsample_bytree=0.8,
+    subsample_freq=1,
+    colsample_bytree=0.7,
+    reg_alpha=0.05,
+    reg_lambda=0.5,
     class_weight="balanced",
     random_state=42,
     n_jobs=-1,
@@ -54,7 +60,7 @@ def train_one(df: pd.DataFrame, name: str) -> dict:
     model.fit(
         X_train, y_train,
         eval_set=[(X_test, y_test)],
-        callbacks=[lgb.early_stopping(50, verbose=False), lgb.log_evaluation(100)],
+        callbacks=[lgb.early_stopping(75, verbose=False), lgb.log_evaluation(100)],
     )
 
     y_prob = model.predict_proba(X_test)[:, 1]
@@ -68,10 +74,10 @@ def train_one(df: pd.DataFrame, name: str) -> dict:
                                 digits=3))
 
     importances = pd.Series(model.feature_importances_, index=FEATURE_COLS)
-    top = importances.sort_values(ascending=False).head(10)
-    print("  Top 10 features:")
+    top = importances.sort_values(ascending=False).head(15)
+    print("  Top 15 features:")
     for feat, imp in top.items():
-        print(f"    {feat:<30} {imp:>6}")
+        print(f"    {feat:<35} {imp:>6}")
 
     return {"model": model, "feature_cols": FEATURE_COLS, "auc": auc, "subset": name}
 

@@ -7,7 +7,7 @@ Usage:
     python3 predict.py --title "Ask HN: What's the best way to learn Rust?" --model recent_1y
     python3 predict.py --title "OpenAI raises $10B" --model recent_5y
 
-Available models: full, show_hn, recent_5y, recent_1y
+Available models: full, show_hn, show_hn_3y, recent_5y, recent_1y
 """
 import argparse
 import pickle
@@ -55,7 +55,7 @@ def main():
     parser.add_argument("--url", default="")
     parser.add_argument(
         "--model", default=DEFAULT_MODEL,
-        choices=["full", "show_hn", "recent_5y", "recent_1y"],
+        choices=["full", "show_hn", "show_hn_3y", "recent_5y", "recent_1y"],
         help="Which trained model to use (default: recent_1y)"
     )
     args = parser.parse_args()
