@@ -16,8 +16,9 @@ from pathlib import Path
 
 from features import features_for_prediction, FEATURE_COLS
 
-MODELS_DIR = Path("models")
-DEFAULT_MODEL = "recent_1y"  # most relevant for current posts
+import os
+MODELS_DIR = Path(os.environ.get("HN_MODELS_DIR", "models"))
+DEFAULT_MODEL = "show_hn_3y"  # best model for current Show HN posts
 
 
 def load_model(name: str):
