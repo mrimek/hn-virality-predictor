@@ -103,15 +103,32 @@ def extract_domain(url):
         return ""
 
 
+# Shared hosting platforms — many different users post from these,
+# so "days since this domain last appeared" is not a meaningful
+# repeat-submitter signal. Exclude them from domain gap computation.
+_SHARED_HOSTING = frozenset({
+    "github.com", "gitlab.com", "bitbucket.org",
+    "netlify.app", "vercel.app", "heroku.com",
+    "glitch.me", "replit.com", "codesandbox.io",
+    "codepen.io", "jsfiddle.net", "observablehq.com",
+    "huggingface.co", "kaggle.com",
+})
+
+
 def _compute_domain_gap(df: pd.DataFrame) -> pd.Series:
     """
-    For each Show HN post, compute days since the same domain last appeared in a Show HN.
-    Returns 365 for first occurrence or posts with no domain.
+    For each Show HN post, compute days since the same personal/project domain
+    last appeared in a Show HN. Returns 365 for first occurrence, no domain,
+    or shared hosting platforms (where the signal is meaningless).
     Non-Show-HN rows get 365.
     """
     result = pd.Series(365.0, index=df.index, dtype=float)
 
-    show_mask = (df["is_show_hn"] == 1) & (df["domain"] != "")
+    show_mask = (
+        (df["is_show_hn"] == 1)
+        & (df["domain"] != "")
+        & (~df["domain"].isin(_SHARED_HOSTING))
+    )
     eligible = df[show_mask].sort_values("dt")
     if eligible.empty or len(eligible) < 2:
         return result

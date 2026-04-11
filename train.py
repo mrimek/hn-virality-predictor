@@ -4,6 +4,7 @@ import pandas as pd
 import lightgbm as lgb
 from pathlib import Path
 from sklearn.calibration import CalibratedClassifierCV
+from sklearn.frozen import FrozenEstimator
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_auc_score, classification_report
 
@@ -71,7 +72,7 @@ def train_one(df: pd.DataFrame, name: str) -> dict:
 
     # Calibrate probabilities: class_weight="balanced" squashes raw predict_proba
     # output near zero. Platt scaling corrects this to the true positive rate.
-    calibrated = CalibratedClassifierCV(model, cv="prefit", method="sigmoid")
+    calibrated = CalibratedClassifierCV(FrozenEstimator(model), method="sigmoid")
     calibrated.fit(X_test, y_test)
 
     y_prob = calibrated.predict_proba(X_test)[:, 1]
