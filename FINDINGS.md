@@ -1,6 +1,6 @@
 # What Makes a Hacker News Launch Go Viral? We Analyzed 190,000 Show HN Posts to Find Out
 
-We built a machine learning model trained on every Show HN post ever submitted — 190,000 project launches spanning 15 years — to predict which ones go viral. Here's what the data actually says.
+We built machine learning models trained on every Show HN post ever submitted — 190,000 project launches spanning 15 years — to predict which ones go viral. Here's what the data actually says.
 
 ---
 
@@ -8,7 +8,7 @@ We built a machine learning model trained on every Show HN post ever submitted �
 
 We pulled the complete Hacker News dataset from Hugging Face (`open-index/hacker-news`), filtered to Show HN posts only, and defined "viral" as landing in the top 10% by score — roughly 22+ points. That's 17,794 viral launches out of 189,892 total.
 
-We trained a LightGBM classifier on 31 features across timing, title style, domain signals, and topic categories. The model reached **AUC 0.747 on the past year's data** — meaningfully better than chance, and good enough to surface real patterns.
+We trained LightGBM classifiers on 46 features across timing, title style, narrative signals, tech stack, domain signals, and topic categories. Our best model — trained on the past 3 years of Show HN posts — reached **AUC 0.757**, meaningfully better than chance and good enough to surface real patterns.
 
 ---
 
@@ -135,23 +135,52 @@ Examples:
 
 ---
 
+## Finding #6: "I Built" Beats "We Built" — and "In X Days" Beats Both
+
+One of the most consistent patterns across our models is that narrative framing matters.
+
+Posts that start with **"I built"** (solo builder) consistently outperform those starting with **"We built"** (team launch). This isn't just a sample size effect — it holds across topics and time periods. HN readers appear to reward the solo hacker narrative: one person solving a real problem from scratch.
+
+The **"built in X days/weeks"** framing gets a further boost. Titles like:
+- `Show HN: I built a full-text search engine in a weekend`
+- `Show HN: I wrote a Postgres-compatible DB in 14 days`
+
+...outperform equivalent projects without the timeframe signal. The constraint makes the achievement more concrete and the story more compelling.
+
+**Why it matters:** If you built something yourself over a weekend or a few weeks, say so explicitly in the title. It's a signal HN has historically rewarded.
+
+---
+
+## Finding #7: Don't Submit from the Same Domain Twice in a Row
+
+`days_since_domain_show_hn` — the number of days since your domain last appeared in a Show HN post — ranked **3rd most important feature** in both the all-time and 3-year models, behind only title style.
+
+The pattern is clear: repeat submitters get significantly less traction. A domain that submitted a Show HN three months ago gets meaningfully lower virality on its next submission, regardless of what the new project is. The community has already seen you once, and the novelty is gone.
+
+This effect is strong enough that for frequent builders, the single most impactful thing you can do before your next Show HN is **wait**. Spacing submissions at least 6 months apart correlates with higher performance.
+
+It also suggests that launching a project on a fresh domain (GitHub repo or dedicated project URL vs. your personal domain) is a real tactical advantage.
+
+---
+
 ## What We Built
 
-The predictor is a LightGBM model trained on 31 features. We train four versions:
+The predictor is a LightGBM classifier trained on 46 features. We train five versions:
 
-| Model | Training Data | AUC |
-|---|---|---|
-| `full` | All 4.6M HN posts | 0.667 |
-| `show_hn` | 190K Show HN posts | 0.697 |
-| `recent_5y` | 1.5M posts, 2021–now | 0.735 |
-| `recent_1y` | 329K posts, 2025–now | **0.747** |
+| Model | Training Data | AUC | Features |
+|---|---|---|---|
+| `full` | All 4.6M HN posts | 0.667 | 31 (legacy) |
+| `show_hn` | 190K Show HN posts, all time | 0.696 | 46 |
+| `show_hn_3y` | 74K Show HN posts, 2023–now | **0.757** | 46 |
+| `recent_5y` | 1.5M posts, 2021–now | 0.735 | 31 (legacy) |
+| `recent_1y` | 329K posts, 2025–now | 0.747 | 31 (legacy) |
 
-The `recent_1y` model is the default for predictions — it reflects current HN patterns, not 2015 ones.
+The `show_hn_3y` model is the recommended choice for anyone launching a Show HN post — it's trained exclusively on the most recent patterns and has the highest AUC.
 
 ```bash
 python3 predict.py --title "Show HN: A Postgres-compatible database written in Rust" \
                    --url "https://github.com/..." \
-                   --model recent_1y
+                   --model show_hn_3y
 ```
 
 ---
@@ -167,6 +196,10 @@ Based on the data:
 - [ ] **Avoid launching as "an AI tool"** — if AI is incidental to your project, don't lead with it
 - [ ] **Title has a parenthetical** with a key constraint or implementation detail
 - [ ] **It does one thing well** — Swiss army knife projects underperform focused tools
+- [ ] **Use "I built" not "we built"** — the solo narrative consistently outperforms team framing
+- [ ] **Add a timeframe if it's honest** — "I built this in a weekend" is a strong signal
+- [ ] **Wait at least 6 months since your last Show HN** — repeat submitters get significantly less traction
+- [ ] **Launch from a fresh domain** — a dedicated project URL or GitHub repo outperforms a personal domain with prior Show HN history
 
 ---
 
