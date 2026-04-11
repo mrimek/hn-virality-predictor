@@ -22,18 +22,18 @@ PARENS_HAS_PATTERN = re.compile(r"\([^)]+\)")
 
 # Narrative / authorship
 SOLO_BUILD_PATTERN = re.compile(
-    r"(?i)^show hn[:\s]+i (built|made|wrote|created|developed|coded|shipped|launched)\b",
+    r"(?i)^show hn[:\s]+i (?:built|made|wrote|created|developed|coded|shipped|launched)\b",
 )
 TEAM_BUILD_PATTERN = re.compile(
-    r"(?i)^show hn[:\s]+we (built|made|wrote|created|developed|coded|shipped|launched)\b",
+    r"(?i)^show hn[:\s]+we (?:built|made|wrote|created|developed|coded|shipped|launched)\b",
 )
 BUILT_TIMEFRAME_PATTERN = re.compile(
-    r"(?i)\bin\s+\d+\s+(hours?|days?|weeks?|months?|weekends?)\b",
+    r"(?i)\bin\s+\d+\s+(?:hours?|days?|weeks?|months?|weekends?)\b",
 )
 
 # Demo / live product signals (title)
 DEMO_PATTERN = re.compile(
-    r"(?i)\b(demo|live demo|playground|try it|try now|try online|hosted|web app|webapp)\b",
+    r"(?i)\b(?:demo|live demo|playground|try it|try now|try online|hosted|web app|webapp)\b",
 )
 
 # Pricing signals
@@ -41,7 +41,7 @@ FREE_SIGNAL_PATTERN = re.compile(
     r"(?i)\bfree\b|open[- ]source|\$0\b|no[- ]cost|gratis|free[- ]tier|foss",
 )
 PAID_SIGNAL_PATTERN = re.compile(
-    r"(?i)\bpaid\b|\bsubscription\b|\bpricing\b|\$\d+\s*/\s*(mo|month|yr|year)\b",
+    r"(?i)\bpaid\b|\bsubscription\b|\bpricing\b|\$\d+\s*/\s*(?:mo|month|yr|year)\b",
 )
 
 # Individual tech stack
