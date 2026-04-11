@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HN Virality Predictor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:           #f7f3ec;
+      --surface:      #ffffff;
+      --surface-2:    #faf8f4;
+      --border:       #e6ddd0;
+      --border-light: #ede6da;
+      --text:         #1c1917;
+      --text-2:       #57534e;
+      --text-3:       #a8a29e;
+      --accent:       #292524;
+      --green:        #15803d;
+      --green-soft:   #f0fdf4;
+      --green-border: #bbf7d0;
+      --red:          #b91c1c;
+      --red-soft:     #fef2f2;
+      --red-border:   #fecaca;
+      --amber:        #b45309;
+      --amber-soft:   #fffbeb;
+      --radius:       14px;
+      --radius-sm:    8px;
+      --shadow:       0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+      --shadow-lg:    0 2px 8px rgba(0,0,0,0.07), 0 8px 32px rgba(0,0,0,0.06);
+    }
+
+    html { font-family: 'Inter', system-ui, sans-serif; font-size: 15px; }
+
+    body {
+      background-color: var(--bg);
+      background-image:
+        linear-gradient(rgba(0,0,0,0.038) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,0,0,0.038) 1px, transparent 1px);
+      background-size: 24px 24px;
+      min-height: 100vh;
+      color: var(--text);
+      padding: 40px 20px 80px;
+    }
+
+    .container {
+      max-width: 660px;
+      margin: 0 auto;
+    }
+
+    /* ── Header ────────────────────────────────── */
+    .header {
+      text-align: center;
+      margin-bottom: 36px;
+    }
+    .header-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 4px 12px 4px 8px;
+      font-size: 12px;
+      color: var(--text-2);
+      margin-bottom: 18px;
+      box-shadow: var(--shadow);
+    }
+    .header-badge .dot {
+      width: 6px; height: 6px;
+      background: #22c55e;
+      border-radius: 50%;
+    }
+    .header h1 {
+      font-size: 28px;
+      font-weight: 600;
+      letter-spacing: -0.5px;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+    .header p {
+      color: var(--text-2);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    /* ── Card ──────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 28px;
+      margin-bottom: 16px;
+    }
+
+    /* ── Tabs ──────────────────────────────────── */
+    .tabs {
+      display: flex;
+      background: var(--surface-2);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-sm);
+      padding: 3px;
+      margin-bottom: 24px;
+    }
+    .tab {
+      flex: 1;
+      padding: 8px 12px;
+      border: none;
+      background: transparent;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 13.5px;
+      font-weight: 500;
+      color: var(--text-2);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      text-align: center;
+    }
+    .tab:hover { color: var(--text); }
+    .tab.active {
+      background: var(--surface);
+      color: var(--text);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 1px rgba(0,0,0,0.04);
+    }
+    .tab-hint {
+      font-size: 11px;
+      font-weight: 400;
+      color: var(--text-3);
+      display: block;
+      margin-top: 1px;
+    }
+
+    /* ── Form fields ──────────────────────────── */
+    .field { margin-bottom: 18px; }
+    .field label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-2);
+      margin-bottom: 6px;
+    }
+    .field-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .char-count {
+      font-size: 11.5px;
+      color: var(--text-3);
+      transition: color 0.2s;
+    }
+    .char-count.sweet { color: var(--green); }
+    .char-count.warn  { color: var(--amber); }
+
+    input[type="text"], textarea {
+      width: 100%;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      font-family: inherit;
+      font-size: 14px;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      resize: none;
+    }
+    input[type="text"]:focus, textarea:focus {
+      border-color: #a8a29e;
+      box-shadow: 0 0 0 3px rgba(0,0,0,0.05);
+      background: var(--surface);
+    }
+    textarea { min-height: 52px; line-height: 1.5; }
+
+    /* Sweet spot indicator bar under title */
+    .title-bar {
+      height: 3px;
+      background: var(--border-light);
+      border-radius: 2px;
+      margin-top: 6px;
+      overflow: hidden;
+    }
+    .title-bar-fill {
+      height: 100%;
+      border-radius: 2px;
+      transition: width 0.3s ease, background 0.3s ease;
+      background: var(--border);
+    }
+
+    /* ── Model selector ───────────────────────── */
+    .model-select-wrap {
+      position: relative;
+      margin-bottom: 22px;
+    }
+    .model-select-label {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-2);
+      margin-bottom: 6px;
+      display: block;
+    }
+    select {
+      width: 100%;
+      appearance: none;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 36px 10px 14px;
+      font-family: inherit;
+      font-size: 13.5px;
+      color: var(--text);
+      cursor: pointer;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    select:focus { border-color: #a8a29e; }
+    .select-arrow {
+      position: absolute;
+      right: 12px;
+      bottom: 11px;
+      pointer-events: none;
+      color: var(--text-3);
+    }
+
+    /* ── Button ──────────────────────────────── */
+    .btn {
+      width: 100%;
+      padding: 11px 24px;
+      background: var(--accent);
+      color: #ffffff;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      letter-spacing: 0.1px;
+    }
+    .btn:hover  { background: #3c3836; }
+    .btn:active { transform: scale(0.99); }
+    .btn:disabled {
+      background: var(--border);
+      color: var(--text-3);
+      cursor: not-allowed;
+    }
+    .btn-loading::after {
+      content: '';
+      display: inline-block;
+      width: 12px; height: 12px;
+      border: 2px solid rgba(255,255,255,0.4);
+      border-top-color: #fff;
+      border-radius: 50%;
+      margin-left: 8px;
+      vertical-align: middle;
+      animation: spin 0.6s linear infinite;
+    }
+
+    /* ── Results card ────────────────────────── */
+    #results {
+      display: none;
+      animation: fadeUp 0.3s ease both;
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Score gauges */
+    .scores-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    .score-card {
+      background: var(--surface-2);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-sm);
+      padding: 20px 16px 16px;
+      text-align: center;
+    }
+    .score-gauge {
+      width: 120px;
+      height: 68px;
+      margin: 0 auto 10px;
+      display: block;
+    }
+    .score-number {
+      font-size: 26px;
+      font-weight: 600;
+      letter-spacing: -0.5px;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+    .score-label {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-2);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .score-sublabel {
+      font-size: 11px;
+      color: var(--text-3);
+      margin-top: 2px;
+    }
+
+    /* Section headers */
+    .section-title {
+      font-size: 11.5px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--text-3);
+      margin-bottom: 12px;
+    }
+
+    /* Signal chips */
+    .signals-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-bottom: 24px;
+    }
+    .signal {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px 4px 8px;
+      border-radius: 999px;
+      font-size: 12.5px;
+      font-weight: 500;
+      border: 1px solid;
+    }
+    .signal.pos {
+      background: var(--green-soft);
+      border-color: var(--green-border);
+      color: var(--green);
+    }
+    .signal.neg {
+      background: var(--red-soft);
+      border-color: var(--red-border);
+      color: var(--red);
+    }
+    .signal svg { flex-shrink: 0; }
+
+    /* Suggestions */
+    .suggestions-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .suggestion-item {
+      display: flex;
+      gap: 12px;
+      padding: 12px 14px;
+      background: var(--amber-soft);
+      border: 1px solid #fde68a;
+      border-radius: var(--radius-sm);
+      font-size: 13.5px;
+      line-height: 1.55;
+      color: #44403c;
+    }
+    .suggestion-num {
+      flex-shrink: 0;
+      width: 20px;
+      height: 20px;
+      background: #fbbf24;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 600;
+      color: #78350f;
+      margin-top: 1px;
+    }
+
+    /* All-clear state */
+    .all-clear {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 14px;
+      background: var(--green-soft);
+      border: 1px solid var(--green-border);
+      border-radius: var(--radius-sm);
+      font-size: 13.5px;
+      color: var(--green);
+      margin-bottom: 20px;
+    }
+
+    /* Result footer */
+    .result-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-light);
+      font-size: 12px;
+      color: var(--text-3);
+    }
+    .result-meta a {
+      color: var(--text-3);
+      text-decoration: none;
+    }
+    .result-meta a:hover { color: var(--text-2); }
+
+    /* Error state */
+    .error-msg {
+      padding: 12px 14px;
+      background: var(--red-soft);
+      border: 1px solid var(--red-border);
+      border-radius: var(--radius-sm);
+      font-size: 13.5px;
+      color: var(--red);
+    }
+
+    @media (max-width: 480px) {
+      .card { padding: 20px 18px; }
+      .scores-row { gap: 10px; }
+      .score-number { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- Header -->
+    <header class="header">
+      <div class="header-badge">
+        <span class="dot"></span>
+        Trained on 190K Show HN posts
+      </div>
+      <h1>HN Virality Predictor</h1>
+      <p>Paste your title and URL. Get an instant read on your chances of<br>landing in the top 10% — before you hit submit.</p>
+    </header>
+
+    <!-- Form card -->
+    <div class="card">
+
+      <!-- Tab switcher -->
+      <div class="tabs" role="tablist">
+        <button class="tab active" data-tab="show_hn" role="tab" aria-selected="true">
+          Show HN
+          <span class="tab-hint">sharing a project you built</span>
+        </button>
+        <button class="tab" data-tab="general" role="tab" aria-selected="false">
+          General HN
+          <span class="tab-hint">news, articles, discussions</span>
+        </button>
+      </div>
+
+      <!-- Title -->
+      <div class="field">
+        <div class="field-meta">
+          <label for="title-input">Post title</label>
+          <span class="char-count" id="char-count">0 chars</span>
+        </div>
+        <textarea
+          id="title-input"
+          placeholder="Show HN: I built a Postgres-compatible database in Rust"
+          rows="2"
+          maxlength="300"
+          spellcheck="true"
+        ></textarea>
+        <div class="title-bar"><div class="title-bar-fill" id="title-bar-fill"></div></div>
+      </div>
+
+      <!-- URL -->
+      <div class="field">
+        <label for="url-input">URL <span style="color:var(--text-3);font-weight:400">(optional)</span></label>
+        <input
+          type="text"
+          id="url-input"
+          placeholder="https://github.com/you/yourproject"
+        />
+      </div>
+
+      <!-- Model selector -->
+      <div class="model-select-wrap">
+        <span class="model-select-label">Model</span>
+        <select id="model-select"></select>
+        <svg class="select-arrow" width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+
+      <!-- Submit -->
+      <button class="btn" id="analyze-btn" type="button">Analyze post →</button>
+    </div>
+
+    <!-- Results card -->
+    <div class="card" id="results">
+
+      <!-- Score gauges -->
+      <div class="scores-row">
+        <div class="score-card">
+          <svg class="score-gauge" viewBox="0 0 120 68" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 62 A 48 48 0 0 1 108 62" stroke="var(--border)" stroke-width="7" stroke-linecap="round"/>
+            <path id="gauge-10-arc" d="M12 62 A 48 48 0 0 1 108 62"
+              stroke="#15803d" stroke-width="7" stroke-linecap="round"
+              stroke-dasharray="150.8" stroke-dashoffset="150.8"
+              style="transition: stroke-dashoffset 0.8s cubic-bezier(0.4,0,0.2,1), stroke 0.4s"/>
+          </svg>
+          <div class="score-number" id="score-10">–</div>
+          <div class="score-label">Top 10%</div>
+          <div class="score-sublabel">viral threshold</div>
+        </div>
+        <div class="score-card">
+          <svg class="score-gauge" viewBox="0 0 120 68" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 62 A 48 48 0 0 1 108 62" stroke="var(--border)" stroke-width="7" stroke-linecap="round"/>
+            <path id="gauge-1-arc" d="M12 62 A 48 48 0 0 1 108 62"
+              stroke="#b45309" stroke-width="7" stroke-linecap="round"
+              stroke-dasharray="150.8" stroke-dashoffset="150.8"
+              style="transition: stroke-dashoffset 0.8s cubic-bezier(0.4,0,0.2,1) 0.1s, stroke 0.4s"/>
+          </svg>
+          <div class="score-number" id="score-1">–</div>
+          <div class="score-label">Top 1%</div>
+          <div class="score-sublabel">breakout estimate</div>
+        </div>
+      </div>
+
+      <!-- Signals -->
+      <div class="section-title">Signals</div>
+      <div class="signals-wrap" id="signals-wrap"></div>
+
+      <!-- Suggestions -->
+      <div id="suggestions-section">
+        <div class="section-title">Suggestions</div>
+        <div class="suggestions-list" id="suggestions-list"></div>
+      </div>
+
+      <!-- Footer -->
+      <div class="result-meta">
+        <span id="result-model-label"></span>
+        <a href="https://github.com/mrimek/hn-virality-predictor" target="_blank">view model →</a>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+    // ── State ──────────────────────────────────────────────────
+    let currentTab = 'show_hn';
+    let modelsData = {};
+
+    // ── Arc gauge math ─────────────────────────────────────────
+    // Semicircle arc length ≈ π × 48 ≈ 150.8
+    const ARC_LEN = 150.8;
+
+    function setGauge(arcEl, numberEl, pct, color) {
+      const offset = ARC_LEN * (1 - Math.min(pct, 100) / 100);
+      arcEl.style.strokeDashoffset = offset;
+      arcEl.style.stroke = color;
+      numberEl.textContent = pct.toFixed(1) + '%';
+      numberEl.style.color = color;
+    }
+
+    function scoreColor(pct) {
+      if (pct >= 70) return '#15803d';
+      if (pct >= 45) return '#16a34a';
+      if (pct >= 25) return '#d97706';
+      return '#dc2626';
+    }
+
+    function score1Color(pct) {
+      if (pct >= 15) return '#7c3aed';
+      if (pct >= 8)  return '#b45309';
+      return '#6b7280';
+    }
+
+    // ── Title bar ──────────────────────────────────────────────
+    const titleInput = document.getElementById('title-input');
+    const charCount  = document.getElementById('char-count');
+    const barFill    = document.getElementById('title-bar-fill');
+
+    titleInput.addEventListener('input', () => {
+      const len = titleInput.value.length;
+      charCount.textContent = `${len} chars`;
+      charCount.className = 'char-count' +
+        (len >= 60 && len <= 80 ? ' sweet' : len > 80 ? ' warn' : '');
+
+      // fill bar: green zone 60-80, amber outside
+      const pct = Math.min(len / 120 * 100, 100);
+      const inSweet = len >= 60 && len <= 80;
+      barFill.style.width = pct + '%';
+      barFill.style.background = inSweet ? '#86efac' : len > 80 ? '#fbbf24' : 'var(--border)';
+    });
+
+    // ── Tabs ────────────────────────────────────────────────────
+    document.querySelectorAll('.tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        currentTab = btn.dataset.tab;
+        document.querySelectorAll('.tab').forEach(b => {
+          b.classList.toggle('active', b === btn);
+          b.setAttribute('aria-selected', b === btn);
+        });
+        populateModelSelect();
+        document.getElementById('results').style.display = 'none';
+        // Update placeholder
+        titleInput.placeholder = currentTab === 'show_hn'
+          ? 'Show HN: I built a Postgres-compatible database in Rust'
+          : 'The silent deprecation of open source infrastructure';
+      });
+    });
+
+    // ── Model select ─────────────────────────────────────────────
+    function populateModelSelect() {
+      const sel = document.getElementById('model-select');
+      sel.innerHTML = '';
+      Object.entries(modelsData).forEach(([key, info]) => {
+        if (info.tab !== currentTab) return;
+        if (!info.available) return;
+        const opt = document.createElement('option');
+        opt.value = key;
+        opt.textContent = info.label + (info.recommended ? '  ✦ recommended' : '');
+        if (info.recommended) opt.selected = true;
+        sel.appendChild(opt);
+      });
+    }
+
+    async function loadModels() {
+      try {
+        const res = await fetch('/models');
+        modelsData = await res.json();
+        populateModelSelect();
+      } catch (e) {
+        console.error('Could not load models', e);
+      }
+    }
+
+    // ── Analyze ──────────────────────────────────────────────────
+    const analyzeBtn = document.getElementById('analyze-btn');
+    analyzeBtn.addEventListener('click', analyze);
+    titleInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) analyze();
+    });
+
+    async function analyze() {
+      const title = titleInput.value.trim();
+      if (!title) {
+        titleInput.focus();
+        return;
+      }
+      const url   = document.getElementById('url-input').value.trim();
+      const model = document.getElementById('model-select').value;
+
+      analyzeBtn.disabled = true;
+      analyzeBtn.textContent = 'Analyzing';
+      analyzeBtn.classList.add('btn-loading');
+
+      try {
+        const res = await fetch('/predict', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, url, model, tab: currentTab }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          showError(data.error || 'Prediction failed');
+          return;
+        }
+
+        renderResults(data);
+      } catch (e) {
+        showError('Could not reach the server. Is it running?');
+      } finally {
+        analyzeBtn.disabled = false;
+        analyzeBtn.textContent = 'Analyze post →';
+        analyzeBtn.classList.remove('btn-loading');
+      }
+    }
+
+    function renderResults(data) {
+      const resultsEl = document.getElementById('results');
+      resultsEl.style.display = 'block';
+      resultsEl.style.animation = 'none';
+      resultsEl.offsetHeight; // reflow
+      resultsEl.style.animation = '';
+
+      // Gauges — animate after a tiny delay for paint
+      setTimeout(() => {
+        const arc10 = document.getElementById('gauge-10-arc');
+        const num10 = document.getElementById('score-10');
+        setGauge(arc10, num10, data.top_10_pct, scoreColor(data.top_10_pct));
+
+        const arc1 = document.getElementById('gauge-1-arc');
+        const num1 = document.getElementById('score-1');
+        setGauge(arc1, num1, data.top_1_pct, score1Color(data.top_1_pct));
+      }, 40);
+
+      // Signals
+      const sigWrap = document.getElementById('signals-wrap');
+      sigWrap.innerHTML = '';
+      data.signals.forEach(s => {
+        const chip = document.createElement('span');
+        chip.className = 'signal ' + (s.positive ? 'pos' : 'neg');
+        chip.innerHTML = s.positive
+          ? `<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>${esc(s.label)}`
+          : `<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>${esc(s.label)}`;
+        sigWrap.appendChild(chip);
+      });
+
+      // Suggestions
+      const sugSection = document.getElementById('suggestions-section');
+      const sugList = document.getElementById('suggestions-list');
+      sugList.innerHTML = '';
+
+      if (data.suggestions.length === 0) {
+        sugSection.innerHTML = `
+          <div class="section-title">Suggestions</div>
+          <div class="all-clear">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M3 8l4 4 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Strong signals across the board — no major improvements detected.
+          </div>`;
+      } else {
+        sugSection.innerHTML = '<div class="section-title">Suggestions</div>';
+        const list = document.createElement('div');
+        list.className = 'suggestions-list';
+        data.suggestions.forEach((s, i) => {
+          const item = document.createElement('div');
+          item.className = 'suggestion-item';
+          item.innerHTML = `<span class="suggestion-num">${i + 1}</span><span>${esc(s)}</span>`;
+          list.appendChild(item);
+        });
+        sugSection.appendChild(list);
+      }
+
+      // Footer
+      document.getElementById('result-model-label').textContent =
+        `${data.model_label} · AUC ${data.model_auc}`;
+
+      resultsEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function showError(msg) {
+      const resultsEl = document.getElementById('results');
+      resultsEl.style.display = 'block';
+      resultsEl.innerHTML = `<div class="error-msg">${esc(msg)}</div>`;
+    }
+
+    function esc(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    // ── Init ────────────────────────────────────────────────────
+    loadModels();
+  </script>
+</body>
+</html>

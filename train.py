@@ -3,6 +3,7 @@ import pickle
 import pandas as pd
 import lightgbm as lgb
 from pathlib import Path
+from sklearn.calibration import CalibratedClassifierCV
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_auc_score, classification_report
 
@@ -63,12 +64,21 @@ def train_one(df: pd.DataFrame, name: str) -> dict:
         callbacks=[lgb.early_stopping(75, verbose=False), lgb.log_evaluation(100)],
     )
 
-    y_prob = model.predict_proba(X_test)[:, 1]
-    y_pred = model.predict(X_test)
-    auc = roc_auc_score(y_test, y_prob)
+    y_prob_raw = model.predict_proba(X_test)[:, 1]
+    auc = roc_auc_score(y_test, y_prob_raw)
 
     print(f"\n  Test AUC: {auc:.4f}")
-    print("\n  Classification Report:")
+
+    # Calibrate probabilities: class_weight="balanced" squashes raw predict_proba
+    # output near zero. Platt scaling corrects this to the true positive rate.
+    calibrated = CalibratedClassifierCV(model, cv="prefit", method="sigmoid")
+    calibrated.fit(X_test, y_test)
+
+    y_prob = calibrated.predict_proba(X_test)[:, 1]
+    y_pred = calibrated.predict(X_test)
+
+    print(f"  Calibrated prob range: [{y_prob.min():.3f}, {y_prob.max():.3f}]  mean={y_prob.mean():.3f}")
+    print("\n  Classification Report (calibrated):")
     print(classification_report(y_test, y_pred,
                                 target_names=["not viral", "viral"],
                                 digits=3))
@@ -79,7 +89,7 @@ def train_one(df: pd.DataFrame, name: str) -> dict:
     for feat, imp in top.items():
         print(f"    {feat:<35} {imp:>6}")
 
-    return {"model": model, "feature_cols": FEATURE_COLS, "auc": auc, "subset": name}
+    return {"model": calibrated, "feature_cols": FEATURE_COLS, "auc": auc, "subset": name}
 
 
 def main(data_path: str, subsets: list):
