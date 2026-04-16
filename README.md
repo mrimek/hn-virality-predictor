@@ -10,8 +10,8 @@ A LightGBM classifier that predicts whether a Hacker News post will reach the to
 
 | Model | Training data | Posts | AUC |
 |---|---|---|---|
-| `show_hn_3y` ⭐ | Show HN posts, Apr 2023–Apr 2026 | 46,000 | **0.762** |
-| `recent_5y` | All HN posts, Apr 2021–Apr 2026 | 215,000 | 0.714 |
+| `show_hn_3y` ⭐ | Show HN posts, Apr 2023–Apr 2026 | 73,544 | **0.762** |
+| `recent_5y` | All HN posts, Apr 2021–Apr 2026 | 1,527,461 | 0.714 |
 
 The `show_hn_3y` model is recommended for any "Show HN:" submission — it reflects current community tastes and has the highest AUC.
 

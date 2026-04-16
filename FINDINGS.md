@@ -8,8 +8,8 @@ We trained machine learning models on Hacker News posts to predict which ones re
 
 | Model | Training data | Posts | Viral rate | AUC |
 |---|---|---|---|---|
-| `show_hn_3y` ⭐ | Show HN, Apr 2023–Apr 2026 | 46,000 | 5.3% | **0.762** |
-| `recent_5y` | All HN posts, Apr 2021–Apr 2026 | 215,000 | 9.2% | 0.714 |
+| `show_hn_3y` ⭐ | Show HN, Apr 2023–Apr 2026 | 73,544 | 5.3% | **0.762** |
+| `recent_5y` | All HN posts, Apr 2021–Apr 2026 | 1,527,461 | 9.2% | 0.714 |
 
 "Viral" = top 10% by score within the training window. For Show HN that's roughly 22+ points.
 
