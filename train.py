@@ -4,7 +4,6 @@ import pandas as pd
 import lightgbm as lgb
 from pathlib import Path
 from sklearn.calibration import CalibratedClassifierCV
-from sklearn.frozen import FrozenEstimator
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_auc_score, classification_report
 
@@ -23,6 +22,9 @@ SUBSETS = {
 
 # Tuned for higher AUC: lower LR + more trees (early stopping handles cutoff),
 # deeper leaves, mild regularization to prevent overfitting on new features.
+# NOTE: do NOT use class_weight="balanced" — it compresses raw predict_proba
+# output near zero, which breaks Platt calibration. Use scale_pos_weight
+# instead (set dynamically per subset based on actual class ratio).
 LGBM_PARAMS = dict(
     n_estimators=1000,
     learning_rate=0.03,
@@ -33,7 +35,6 @@ LGBM_PARAMS = dict(
     colsample_bytree=0.7,
     reg_alpha=0.05,
     reg_lambda=0.5,
-    class_weight="balanced",
     random_state=42,
     n_jobs=-1,
 )
@@ -54,11 +55,22 @@ def train_one(df: pd.DataFrame, name: str) -> dict:
     viral_pct = y.mean() * 100
     print(f"  Viral posts: {y.sum():,} / {len(y):,} ({viral_pct:.1f}%)")
 
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42, stratify=y
+    # 3-way split: 70% train LightGBM, 15% calibrate Platt, 15% evaluate
+    X_train, X_temp, y_train, y_temp = train_test_split(
+        X, y, test_size=0.30, random_state=42, stratify=y
+    )
+    X_cal, X_test, y_cal, y_test = train_test_split(
+        X_temp, y_temp, test_size=0.50, random_state=42, stratify=y_temp
     )
 
-    model = lgb.LGBMClassifier(**LGBM_PARAMS)
+    # scale_pos_weight balances classes without compressing predict_proba
+    n_neg = (y_train == 0).sum()
+    n_pos = (y_train == 1).sum()
+    spw   = n_neg / n_pos
+    print(f"  scale_pos_weight: {spw:.1f}")
+    print(f"  Split: {len(X_train):,} train / {len(X_cal):,} cal / {len(X_test):,} test")
+
+    model = lgb.LGBMClassifier(**LGBM_PARAMS, scale_pos_weight=spw)
     model.fit(
         X_train, y_train,
         eval_set=[(X_test, y_test)],
@@ -68,12 +80,14 @@ def train_one(df: pd.DataFrame, name: str) -> dict:
     y_prob_raw = model.predict_proba(X_test)[:, 1]
     auc = roc_auc_score(y_test, y_prob_raw)
 
-    print(f"\n  Test AUC: {auc:.4f}")
+    print(f"\n  Test AUC (raw): {auc:.4f}")
+    print(f"  Raw prob range: [{y_prob_raw.min():.4f}, {y_prob_raw.max():.4f}]  mean={y_prob_raw.mean():.4f}")
 
-    # Calibrate probabilities: class_weight="balanced" squashes raw predict_proba
-    # output near zero. Platt scaling corrects this to the true positive rate.
-    calibrated = CalibratedClassifierCV(FrozenEstimator(model), method="sigmoid")
-    calibrated.fit(X_test, y_test)
+    # Calibrate on a separate holdout — fitting on the test set compresses the
+    # Platt sigmoid to near-zero (A ~ -60), making all outputs identical.
+    # cv="prefit" means the base model is already trained; we only fit calibration.
+    calibrated = CalibratedClassifierCV(model, method="sigmoid", cv="prefit")
+    calibrated.fit(X_cal, y_cal)
 
     y_prob = calibrated.predict_proba(X_test)[:, 1]
     y_pred = calibrated.predict(X_test)
@@ -90,7 +104,7 @@ def train_one(df: pd.DataFrame, name: str) -> dict:
     for feat, imp in top.items():
         print(f"    {feat:<35} {imp:>6}")
 
-    return {"model": calibrated, "feature_cols": FEATURE_COLS, "auc": auc, "subset": name}
+    return {"model": calibrated, "feature_cols": FEATURE_COLS, "auc": auc, "subset": name, "n_train": len(df)}
 
 
 def main(data_path: str, subsets: list):
