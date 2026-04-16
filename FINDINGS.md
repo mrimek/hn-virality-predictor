@@ -1,14 +1,19 @@
-# What Makes a Hacker News Launch Go Viral? We Analyzed 190,000 Show HN Posts to Find Out
+# What Makes a Hacker News Post Go Viral? We Analyzed 260,000 Posts to Find Out
 
-We built machine learning models trained on every Show HN post ever submitted — 190,000 project launches spanning 15 years — to predict which ones go viral. Here's what the data actually says.
+We trained machine learning models on Hacker News posts to predict which ones reach the top 10% by score. Here's what the data actually says.
 
 ---
 
-## The Dataset
+## The Models
 
-We pulled the complete Hacker News dataset from Hugging Face (`open-index/hacker-news`), filtered to Show HN posts only, and defined "viral" as landing in the top 10% by score — roughly 22+ points. That's 17,794 viral launches out of 189,892 total.
+| Model | Training data | Posts | Viral rate | AUC |
+|---|---|---|---|---|
+| `show_hn_3y` ⭐ | Show HN, Apr 2023–Apr 2026 | 46,000 | 5.3% | **0.762** |
+| `recent_5y` | All HN posts, Apr 2021–Apr 2026 | 215,000 | 9.2% | 0.714 |
 
-We trained LightGBM classifiers on 46 features across timing, title style, narrative signals, tech stack, domain signals, and topic categories. Our best model — trained on the past 3 years of Show HN posts — reached **AUC 0.757**, meaningfully better than chance and good enough to surface real patterns.
+"Viral" = top 10% by score within the training window. For Show HN that's roughly 22+ points.
+
+**Training approach:** LightGBM binary classifier with Platt calibration (3-way 70/15/15 split — calibration is fitted on a separate holdout, not the test set). Class imbalance handled with `scale_pos_weight` (17.9× for `show_hn_3y`, 9.9× for `recent_5y`). 46 features across timing, title style, narrative framing, tech stack, domain, and topic signals.
 
 ---
 
@@ -16,11 +21,11 @@ We trained LightGBM classifiers on 46 features across timing, title style, narra
 
 This one surprised us.
 
-| Topic | Show HN Posts | Viral Rate |
+| Topic | Show HN posts | Viral rate |
 |---|---|---|
 | Open Source Tools | 7,728 | **13.9%** |
 | Systems (Rust, DBs, compilers) | 11,878 | **12.3%** |
-| Web Dev Tools | 11,726 | **11.2%** |
+| Web Dev Tools | 11,726 | 11.2% |
 | Hardware | 1,649 | 10.5% |
 | Security | 7,050 | 10.1% |
 | Business / Startup | 2,812 | 8.9% |
@@ -30,9 +35,9 @@ This one surprised us.
 
 AI/ML has more Show HN submissions than every other category combined — and the lowest virality rate of all of them. The category is so flooded that even genuinely good AI projects get buried.
 
-And the trend is getting worse:
+The trend is getting worse:
 
-| Year | AI/ML Viral Rate |
+| Year | AI/ML viral rate |
 |---|---|
 | 2021 | 15.0% |
 | 2022 | 10.9% |
@@ -41,15 +46,27 @@ And the trend is getting worse:
 
 Three years ago, an AI project had a 1-in-7 shot at going viral on Show HN. Today it's closer to 1-in-22. Meanwhile, systems tools have held steady at 12–19% virality since 2015.
 
-**The takeaway:** If you're launching an AI wrapper or ChatGPT-adjacent product, expect low HN traction regardless of quality. If you're launching an open source infrastructure tool, your odds are roughly 3x higher.
+**The takeaway:** If you're launching an AI wrapper or ChatGPT-adjacent product, expect low HN traction regardless of quality. If you're launching an open source infrastructure tool, your odds are roughly 3× higher.
 
 ---
 
-## Finding #2: HN Rewards Technical Depth, Not Hype
+## Finding #2: Caps Ratio Is the Strongest Predictive Signal
+
+The single most important feature in both models is `title_caps_ratio` — the fraction of characters in the title that are uppercase.
+
+This is more nuanced than "don't use all-caps." The pattern is that titles with unusual or elevated capitalisation correlate strongly with lower virality. HN readers associate heavy caps with hype and marketing language.
+
+The sweet spot is natural sentence case or standard title case. Acronyms and proper nouns (SQLite, WebGL, WASM) are fine — they tend to be specific and technical. What tanks the score is promotional capitalisation: "Build Your Next AI App With Our Platform."
+
+**The takeaway:** Write your title like you're explaining something to a colleague, not pitching to an investor.
+
+---
+
+## Finding #3: Technical Depth, Not Hype
 
 The keywords most associated with viral Show HN posts tell a clear story:
 
-| Keyword | Posts | Viral Rate |
+| Keyword | Posts | Viral rate |
 |---|---|---|
 | lua | 143 | 25.2% |
 | implemented | 155 | 24.5% |
@@ -64,19 +81,19 @@ The keywords most associated with viral Show HN posts tell a clear story:
 | postgres | 403 | 18.6% |
 | webgl | 403 | 19.4% |
 
-Notice what's not here: "AI", "GPT", "productivity", "SaaS", "startup". The words that predict virality are words that signal you built something technically ambitious — a compiler, a REPL, an emulator, a low-level networking tool.
+Notice what's missing: "AI", "GPT", "productivity", "SaaS", "startup". The words that predict virality signal technical ambition — a compiler, a REPL, an emulator, a low-level networking tool.
 
 The word "implemented" at 24.5% is particularly telling. Titles like "I implemented X from scratch" or "Show HN: A Lisp interpreter implemented in Zig" consistently outperform. HN readers reward the work, not the pitch.
 
-**Niche language communities are disproportionately powerful.** Lua, Lisp, Haskell, Zig — these communities are small but extremely loyal upvoters. Releasing a tool in or for a niche language gives you a built-in engaged audience.
+Niche language communities (Lua, Lisp, Haskell, Zig) are disproportionately powerful — small but extremely loyal upvoters.
 
 ---
 
-## Finding #3: Post at Noon UTC on a Sunday
+## Finding #4: Post at Noon UTC on a Sunday
 
-**Best hours to post (UTC):**
+**Best hours (UTC):**
 
-| Hour (UTC) | Viral Rate |
+| Hour | Viral rate |
 |---|---|
 | 12:00 | 11.0% |
 | 11:00 | 10.3% |
@@ -86,44 +103,42 @@ The word "implemented" at 24.5% is particularly telling. Titles like "I implemen
 
 **Best days:**
 
-| Day | Viral Rate |
+| Day | Viral rate |
 |---|---|
 | Sunday | 10.6% |
 | Saturday | 9.9% |
 | Monday | 9.5% |
 | Friday | 9.0% |
 
-This is the opposite of what you might expect. For Show HN specifically, **noon UTC on a Sunday** is the sweet spot. The most likely explanation: during business hours, developers are actively browsing HN and engaging with interesting projects. Weekend posts face less competition from news articles and have more dwell time on the front page.
+For Show HN specifically, **noon UTC on Sunday** is the sweet spot. Weekend posts face less competition from news articles and have more dwell time on the front page. Avoid posting late at night — midnight UTC is the worst time for Show HN.
 
-Avoid posting late at night — midnight UTC is the worst time for Show HN (though it's the best for general news links).
+Note: `hour` and `day_of_week` are in the top 5 features by importance. The model has a meaningful step-change between peak and off-peak hours — timing alone can shift the score by 10–15 points.
 
 ---
 
-## Finding #4: Open Source Is the Single Strongest Signal
+## Finding #5: Open Source Is the Strongest Single Content Signal
 
-An open source project has a 13.9% virality rate on Show HN — nearly 3x the rate of an AI project. This isn't just a topic correlation; it reflects a core HN community value.
+An open source project has a 13.9% virality rate on Show HN — nearly 3× the rate of an AI project. This reflects a core HN community value, not just a topic correlation.
 
-Projects that link to GitHub in their title or URL perform significantly better than those without. Having a demo link (separate from the GitHub repo) is an additional positive signal — it lowers the activation energy for trying the project.
+Projects linking to GitHub perform significantly better than those without. A live demo link (separate from the GitHub repo) is an additional positive signal — it lowers the activation energy for trying the project.
 
 The pattern of top Show HN posts is consistent: open source, technically deep, with a working demo or clear GitHub repo.
 
 ---
 
-## Finding #5: Title Style Matters More Than Topic
+## Finding #6: Title Style Matters More Than Topic
 
-Across all our models, **title style features outrank topic features** in importance:
+Across both models, title style features rank above topic features:
 
-1. Caps ratio (fraction of uppercase letters)
-2. Title length
-3. Word count
-4. Posting hour
-5. Whether it has a parenthetical
+1. `title_caps_ratio` — fraction of uppercase characters
+2. `title_len` — character count (sweet spot: 60–80)
+3. `title_sweet_spot` — binary flag for 60–80 chars
+4. `has_parens` — whether the title has a parenthetical
+5. `word_count` — number of words
 
-The caps ratio finding is nuanced — it's not that all-caps titles win. It's that titles with unusual capitalization patterns (like `MyTool` or `SQLite`, `WebGL`, `MIDI`) stand out and tend to be more specific and technical.
+**Titles with a parenthetical perform consistently well** — e.g., `Show HN: FastDB – a zero-dependency SQLite alternative (written in Zig)`. The parenthetical lets you pack in a key differentiator or constraint without cluttering the main title.
 
-**Titles with a parenthetical perform well** — e.g., `Show HN: FastDB – a zero-dependency SQLite alternative (written in Zig)`. The parenthetical signals specificity and lets you pack in a key differentiator without cluttering the main title.
-
-Ideal title structure based on what wins:
+Ideal structure based on what wins:
 ```
 Show HN: [What it is] – [Key differentiator] ([tech/language/constraint])
 ```
@@ -135,81 +150,51 @@ Examples:
 
 ---
 
-## Finding #6: "I Built" Beats "We Built" — and "In X Days" Beats Both
+## Finding #7: "I Built" Beats "We Built"
 
-One of the most consistent patterns across our models is that narrative framing matters.
+Posts starting with **"I built"** (solo builder) consistently outperform **"We built"** (team launch) across topics and time periods. HN readers appear to reward the solo hacker narrative.
 
-Posts that start with **"I built"** (solo builder) consistently outperform those starting with **"We built"** (team launch). This isn't just a sample size effect — it holds across topics and time periods. HN readers appear to reward the solo hacker narrative: one person solving a real problem from scratch.
-
-The **"built in X days/weeks"** framing gets a further boost. Titles like:
+The **"built in X days/weeks"** framing gets a further boost:
 - `Show HN: I built a full-text search engine in a weekend`
 - `Show HN: I wrote a Postgres-compatible DB in 14 days`
 
-...outperform equivalent projects without the timeframe signal. The constraint makes the achievement more concrete and the story more compelling.
-
-**Why it matters:** If you built something yourself over a weekend or a few weeks, say so explicitly in the title. It's a signal HN has historically rewarded.
+The constraint makes the achievement concrete and the story compelling.
 
 ---
 
-## Finding #7: Don't Submit from the Same Domain Twice in a Row
+## Finding #8: Don't Submit from the Same Domain Twice in a Row
 
-`days_since_domain_show_hn` — the number of days since your domain last appeared in a Show HN post — ranked **3rd most important feature** in both the all-time and 3-year models, behind only title style.
+`days_since_domain_show_hn` — days since this domain last appeared in a Show HN post — ranks as a top-5 feature by importance in both models.
 
-The pattern is clear: repeat submitters get significantly less traction. A domain that submitted a Show HN three months ago gets meaningfully lower virality on its next submission, regardless of what the new project is. The community has already seen you once, and the novelty is gone.
+Repeat submitters get significantly less traction. A domain that ran a Show HN three months ago scores meaningfully lower on its next submission regardless of what the project is. The community has already seen you once; the novelty is gone.
 
-This effect is strong enough that for frequent builders, the single most impactful thing you can do before your next Show HN is **wait**. Spacing submissions at least 6 months apart correlates with higher performance.
+This effect is strong enough that **waiting** is the highest-ROI thing a frequent builder can do before their next Show HN. Spacing submissions at least 6 months apart correlates with higher performance.
 
-It also suggests that launching a project on a fresh domain (GitHub repo or dedicated project URL vs. your personal domain) is a real tactical advantage.
-
----
-
-## What We Built
-
-The predictor is a LightGBM classifier trained on 46 features. We train five versions:
-
-| Model | Training Data | AUC | Features |
-|---|---|---|---|
-| `full` | All 4.6M HN posts | 0.667 | 31 (legacy) |
-| `show_hn` | 190K Show HN posts, all time | 0.696 | 46 |
-| `show_hn_3y` | 74K Show HN posts, 2023–now | **0.757** | 46 |
-| `recent_5y` | 1.5M posts, 2021–now | 0.735 | 31 (legacy) |
-| `recent_1y` | 329K posts, 2025–now | 0.747 | 31 (legacy) |
-
-The `show_hn_3y` model is the recommended choice for anyone launching a Show HN post — it's trained exclusively on the most recent patterns and has the highest AUC.
-
-```bash
-python3 predict.py --title "Show HN: A Postgres-compatible database written in Rust" \
-                   --url "https://github.com/..." \
-                   --model show_hn_3y
-```
+Launching from a fresh domain (dedicated project URL or GitHub repo vs. your personal domain with prior Show HN history) is a real tactical advantage.
 
 ---
 
-## Practical Checklist for Launching on Show HN
+## Practical Checklist for Show HN
 
 Based on the data:
 
-- [ ] **It's open source** — closed-source launches have ~3x lower virality
-- [ ] **It has a GitHub link** — not just a landing page
-- [ ] **The title signals technical depth** — use specific technical terms, not marketing language
+- [ ] **It's open source** — closed-source launches have ~3× lower virality
+- [ ] **GitHub link in the URL** — not just a landing page
+- [ ] **Title signals technical depth** — specific technical terms, not marketing language
 - [ ] **Post on Sunday or Saturday, 11am–6pm UTC**
-- [ ] **Avoid launching as "an AI tool"** — if AI is incidental to your project, don't lead with it
+- [ ] **Avoid leading with the AI angle** — if AI is incidental, don't make it the headline
 - [ ] **Title has a parenthetical** with a key constraint or implementation detail
-- [ ] **It does one thing well** — Swiss army knife projects underperform focused tools
-- [ ] **Use "I built" not "we built"** — the solo narrative consistently outperforms team framing
-- [ ] **Add a timeframe if it's honest** — "I built this in a weekend" is a strong signal
-- [ ] **Wait at least 6 months since your last Show HN** — repeat submitters get significantly less traction
-- [ ] **Launch from a fresh domain** — a dedicated project URL or GitHub repo outperforms a personal domain with prior Show HN history
+- [ ] **60–80 character title** — long enough to be specific, short enough to scan
+- [ ] **"I built" not "we built"** — solo narrative consistently outperforms team framing
+- [ ] **Add a timeframe if honest** — "I built this in a weekend" is a strong signal
+- [ ] **Wait at least 6 months since your last Show HN**
+- [ ] **Fresh domain** — a dedicated project URL outperforms a personal domain with prior Show HN history
 
 ---
 
 ## Caveats
 
-- "Viral" here means top 10% by score — not necessarily front page domination. A score of 22 counts.
-- This model predicts based on title and timing alone — it can't assess actual project quality, which matters enormously.
-- HN's algorithm (including time decay and flagging) isn't captured here.
-- The 2023 data has anomalies (near-zero virality rates) suggesting a data collection gap in the source dataset.
-
----
-
-*Code and data pipeline: [github.com/mrimek/hn-virality-predictor](https://github.com/mrimek/hn-virality-predictor)*
+- "Viral" = top 10% by score — not necessarily front page. A score of 22 qualifies.
+- The model predicts based on title, URL, and timing — it can't assess actual project quality, which matters enormously.
+- HN's ranking algorithm (time decay, flagging) isn't captured.
+- Raw calibrated probability tops out at ~15% for the best Show HN posts. Even a perfect score has roughly a 15–18% chance of reaching the front page — HN has a large random/community component no model can predict.
