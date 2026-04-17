@@ -272,9 +272,12 @@ FEATURE_COLS = [
     "has_free_signal", "has_paid_signal",
     # Tech stack
     "tech_rust", "tech_go", "tech_python", "tech_wasm", "tech_typescript", "tech_cpp",
-    "tech_lua", "tech_lisp", "tech_webgl", "tech_postgres",
-    # Craft signals
-    "has_implemented", "has_from_scratch", "has_emulator", "has_midi", "has_compiler",
+    # Niche tech + craft signals — extracted but excluded from FEATURE_COLS until
+    # enough training data exists to learn reliable splits (each keyword appears
+    # in <1% of posts; adding them degraded AUC from 0.762 → 0.726 in testing).
+    # Uncomment and retrain once the dataset grows or a better encoding is found:
+    # "tech_lua", "tech_lisp", "tech_webgl", "tech_postgres",
+    # "has_implemented", "has_from_scratch", "has_emulator", "has_midi", "has_compiler",
     # Domain / URL
     "has_url", "is_github", "is_arxiv", "is_youtube", "is_medium", "is_nytimes",
     "is_live_url",                    # new

@@ -83,10 +83,11 @@ def train_one(df: pd.DataFrame, name: str) -> dict:
     print(f"\n  Test AUC (raw): {auc:.4f}")
     print(f"  Raw prob range: [{y_prob_raw.min():.4f}, {y_prob_raw.max():.4f}]  mean={y_prob_raw.mean():.4f}")
 
-    # Calibrate on a separate holdout — fitting on the test set compresses the
-    # Platt sigmoid to near-zero (A ~ -60), making all outputs identical.
-    # cv="prefit" means the base model is already trained; we only fit calibration.
-    calibrated = CalibratedClassifierCV(model, method="sigmoid", cv="prefit")
+    # Calibrate on a separate holdout — fitting on the test set leaks information.
+    # Using isotonic regression instead of Platt (sigmoid): the narrow raw probability
+    # range from scale_pos_weight causes sigmoid fitting to overflow numerically.
+    # Isotonic regression is non-parametric and numerically stable.
+    calibrated = CalibratedClassifierCV(model, method="isotonic", cv="prefit")
     calibrated.fit(X_cal, y_cal)
 
     y_prob = calibrated.predict_proba(X_test)[:, 1]
