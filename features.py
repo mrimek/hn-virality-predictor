@@ -22,10 +22,10 @@ PARENS_HAS_PATTERN = re.compile(r"\([^)]+\)")
 
 # Narrative / authorship
 SOLO_BUILD_PATTERN = re.compile(
-    r"(?i)^show hn[:\s]+i (?:built|made|wrote|created|developed|coded|shipped|launched)\b",
+    r"(?i)^show hn[:\s]+i (?:built|made|wrote|created|developed|coded|shipped|launched|implemented)\b",
 )
 TEAM_BUILD_PATTERN = re.compile(
-    r"(?i)^show hn[:\s]+we (?:built|made|wrote|created|developed|coded|shipped|launched)\b",
+    r"(?i)^show hn[:\s]+we (?:built|made|wrote|created|developed|coded|shipped|launched|implemented)\b",
 )
 BUILT_TIMEFRAME_PATTERN = re.compile(
     r"(?i)\bin\s+\d+\s+(?:hours?|days?|weeks?|months?|weekends?)\b",
@@ -51,6 +51,19 @@ TECH_PYTHON     = re.compile(r"(?i)\bpython\b")
 TECH_WASM       = re.compile(r"(?i)\bwasm\b|webassembly")
 TECH_TYPESCRIPT = re.compile(r"(?i)\btypescript\b")
 TECH_CPP        = re.compile(r"(?i)\bc\+\+\b|\bcpp\b")
+
+# Niche tech keywords with high observed viral rates in Show HN data
+TECH_LUA      = re.compile(r"(?i)\blua\b")
+TECH_LISP     = re.compile(r"(?i)\blisp\b|\bscheme\b|\bhaskell\b|\bzig\b|\belixir\b|\bclojure\b")
+TECH_WEBGL    = re.compile(r"(?i)\bwebgl\b|\bthree\.?js\b|\bglsl\b|\bshader\b")
+TECH_POSTGRES = re.compile(r"(?i)\bpostgres\b|\bpostgresql\b")
+
+# Craft signals — indicate from-scratch implementation work
+HAS_IMPLEMENTED = re.compile(r"(?i)\bimplemented\b|\bimplements\b|\bimplementing\b")
+HAS_FROM_SCRATCH = re.compile(r"(?i)\bfrom scratch\b|\bfrom[- ]first[- ]principles\b")
+HAS_EMULATOR    = re.compile(r"(?i)\bemulat")
+HAS_MIDI        = re.compile(r"(?i)\bmidi\b")
+HAS_COMPILER    = re.compile(r"(?i)\bcompiler\b|\binterpreter\b|\btranspiler\b")
 
 # Domains that are NOT live-app URLs (used to detect real hosted demos)
 _NON_LIVE_DOMAINS = re.compile(
@@ -203,6 +216,17 @@ def extract_features(df: pd.DataFrame) -> pd.DataFrame:
     df["tech_wasm"]       = df["title"].str.contains(TECH_WASM).astype(int)
     df["tech_typescript"] = df["title"].str.contains(TECH_TYPESCRIPT).astype(int)
     df["tech_cpp"]        = df["title"].str.contains(TECH_CPP).astype(int)
+    df["tech_lua"]        = df["title"].str.contains(TECH_LUA).astype(int)
+    df["tech_lisp"]       = df["title"].str.contains(TECH_LISP).astype(int)
+    df["tech_webgl"]      = df["title"].str.contains(TECH_WEBGL).astype(int)
+    df["tech_postgres"]   = df["title"].str.contains(TECH_POSTGRES).astype(int)
+
+    # Craft signals
+    df["has_implemented"]  = df["title"].str.contains(HAS_IMPLEMENTED).astype(int)
+    df["has_from_scratch"] = df["title"].str.contains(HAS_FROM_SCRATCH).astype(int)
+    df["has_emulator"]     = df["title"].str.contains(HAS_EMULATOR).astype(int)
+    df["has_midi"]         = df["title"].str.contains(HAS_MIDI).astype(int)
+    df["has_compiler"]     = df["title"].str.contains(HAS_COMPILER).astype(int)
 
     # --- Topic features ---
     for topic, pattern in TOPIC_PATTERNS.items():
@@ -246,8 +270,11 @@ FEATURE_COLS = [
     "is_solo_build", "is_team_build", "built_timeframe",
     "has_demo", "title_mentions_github",
     "has_free_signal", "has_paid_signal",
-    # Tech stack (new)
+    # Tech stack
     "tech_rust", "tech_go", "tech_python", "tech_wasm", "tech_typescript", "tech_cpp",
+    "tech_lua", "tech_lisp", "tech_webgl", "tech_postgres",
+    # Craft signals
+    "has_implemented", "has_from_scratch", "has_emulator", "has_midi", "has_compiler",
     # Domain / URL
     "has_url", "is_github", "is_arxiv", "is_youtube", "is_medium", "is_nytimes",
     "is_live_url",                    # new
