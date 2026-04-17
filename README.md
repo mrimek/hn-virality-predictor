@@ -25,9 +25,10 @@ The `show_hn_3y` model is recommended for any "Show HN:" submission — it refle
 git clone https://github.com/mrimek/hn-virality-predictor
 cd hn-virality-predictor
 pip install -r requirements.txt
+python3 fetch_models.py   # downloads pre-trained models from GitHub Releases
 ```
 
-Trained models are stored in `models/`. To predict without retraining:
+To predict without retraining:
 
 ```bash
 python3 predict.py \
@@ -147,6 +148,14 @@ hn-virality-predictor/
 ├── FINDINGS.md        # full analysis write-up
 └── requirements.txt
 ```
+
+---
+
+## Contributing
+
+The best contribution is a new feature — a signal extracted from the title, URL, or timing that predicts virality better. The loop is: add a regex to `features.py`, add it to `FEATURE_COLS`, retrain, check if AUC improves.
+
+See **[CONTRIBUTING.md](CONTRIBUTING.md)** for a full walkthrough, worked example, and a list of feature ideas that haven't been tried yet.
 
 ---
 

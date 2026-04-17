@@ -56,8 +56,8 @@ def main():
     parser.add_argument("--url", default="")
     parser.add_argument(
         "--model", default=DEFAULT_MODEL,
-        choices=["full", "show_hn", "show_hn_3y", "recent_5y", "recent_1y"],
-        help="Which trained model to use (default: recent_1y)"
+        choices=["show_hn_3y", "recent_5y", "show_hn"],
+        help="Which trained model to use (default: show_hn_3y)"
     )
     args = parser.parse_args()
 
