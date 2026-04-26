@@ -1,6 +1,6 @@
 # HN Virality Predictor
 
-A LightGBM classifier that predicts whether a Hacker News post will reach the top 10% by score — trained on 260,000+ HN posts across five model variants.
+A LightGBM classifier that predicts whether a Hacker News post will reach the top 10% by score — trained on 1.6M+ HN posts across two model variants.
 
 **Live tool:** [wannalaunch.com](https://wannalaunch.com)
 
@@ -141,7 +141,7 @@ hn-virality-predictor/
 ├── train.py           # training pipeline
 ├── fetch_data.py      # downloads HN dataset from Hugging Face
 ├── analyze.py         # exploratory analysis scripts
-├── api.py             # lightweight FastAPI wrapper (optional)
+├── fetch_models.py    # downloads pre-trained models from GitHub Releases
 ├── models/            # trained model pickles (lgbm_*.pkl)
 ├── data/              # parquet cache (gitignored)
 ├── tests/             # pytest tests for feature extraction

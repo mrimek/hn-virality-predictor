@@ -1,4 +1,4 @@
-# What Makes a Hacker News Post Go Viral? We Analyzed 260,000 Posts to Find Out
+# What Makes a Hacker News Post Go Viral? We Analyzed 1.6M Posts to Find Out
 
 We trained machine learning models on Hacker News posts to predict which ones reach the top 10% by score. Here's what the data actually says.
 
